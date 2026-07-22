@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Word · Simple Word Finding</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar word-topbar">
+    <a href="index.html" class="back-link">&larr; Back to Simple Word Finding</a>
+  </header>
+
+  <main class="word-main">
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <p>Looking up word…</p>
+    </div>
+
+    <article id="wordCard" class="word-card" hidden>
+      <h1 id="wordTitle" class="word-title"></h1>
+      <div id="phonetic" class="phonetic"></div>
+
+      <div id="variantsBox" class="variants-box" hidden>
+        <h3>Spelling variants</h3>
+        <div id="variantsList" class="variants-list"></div>
+      </div>
+
+      <div id="meaningsContainer"></div>
+
+      <div class="ai-section">
+        <h3>✨ AI Example</h3>
+        <div id="aiExample" class="ai-example">
+          <button id="generateAiBtn" class="ai-btn">Generate an AI example sentence</button>
+        </div>
+      </div>
+    </article>
+
+    <div id="notFoundState" class="not-found-state" hidden>
+      <h2>No definition found</h2>
+      <p>We couldn't find a definition for "<span id="notFoundWord"></span>". It may be a rare word, or the dictionary service may not have an entry for it.</p>
+    </div>
+
+    <a href="index.html" class="back-link back-link-bottom">&larr; Back to Simple Word Finding</a>
+  </main>
+
+<script src="dictionary-data.js"></script>
+<script src="script.js"></script>
+<script src="word.js"></script>
+</body>
+</html>
