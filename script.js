@@ -1,167 +1,319 @@
-/* =========================================================
-   Simple Word Finding — shared script
-   Handles: homepage word list rendering + live search
-   ========================================================= */
+let dictionaryData = [];
+let filteredWords = [];
+let isLoading = true;
+let currentWordData = null;
 
-(function () {
-  const wordListEl = document.getElementById('wordList');
-  if (!wordListEl) return; // not on homepage
+// DOM Elements
+const homepage = document.getElementById('homepage');
+const wordPage = document.getElementById('wordPage');
+const searchInput = document.getElementById('searchInput');
+const wordList = document.getElementById('wordList');
+const loading = document.getElementById('loading');
+const noResults = document.getElementById('noResults');
+const searchInfo = document.getElementById('searchInfo');
+const wordTitle = document.getElementById('wordTitle');
+const partOfSpeech = document.getElementById('partOfSpeech');
+const wordDefinition = document.getElementById('wordDefinition');
+const variantsSection = document.getElementById('variantsSection');
+const variantsList = document.getElementById('variantsList');
+const pronunciationSection = document.getElementById('pronunciationSection');
+const wordPronunciation = document.getElementById('wordPronunciation');
+const verbFormsSection = document.getElementById('verbFormsSection');
+const verbFormsList = document.getElementById('verbFormsList');
+const exampleSection = document.getElementById('exampleSection');
+const wordExample = document.getElementById('wordExample');
+const aiExampleSection = document.getElementById('aiExampleSection');
+const aiExampleText = document.getElementById('aiExampleText');
+const aiExampleLoading = document.getElementById('aiExampleLoading');
+const regenerateBtn = document.getElementById('regenerateBtn');
+const themeToggle = document.getElementById('themeToggle');
 
-  const searchInput = document.getElementById('searchInput');
-  const emptyState = document.getElementById('emptyState');
-  const emptyQuery = document.getElementById('emptyQuery');
-  const resultCount = document.getElementById('resultCount');
-  const wordTotal = document.getElementById('wordTotal');
+// Initialize
+document.addEventListener('DOMContentLoaded', init);
 
-  const ALL_WORDS = DICTIONARY_WORDS; // from dictionary-data.js
-  wordTotal.textContent = ALL_WORDS.length.toLocaleString();
+async function init() {
+    initTheme();
+    setupEventListeners();
+    
+    try {
+        const response = await fetch('dictionary.json');
+        if (!response.ok) throw new Error('Failed to load dictionary');
+        const data = await response.json();
+        dictionaryData = data.words;
+        filteredWords = [...dictionaryData];
+        
+        loading.style.display = 'none';
+        isLoading = false;
+        
+        renderWordList(filteredWords);
+        updateSearchInfo();
+    } catch (error) {
+        console.error('Error loading dictionary:', error);
+        loading.innerHTML = '<p style="color: #e74c3c;">Error loading dictionary. Please refresh the page.</p>';
+    }
+}
 
-  const MAX_RENDER = 500; // render cap per pass for performance; refine search to narrow down
+function setupEventListeners() {
+    themeToggle.addEventListener('click', toggleTheme);
+    regenerateBtn.addEventListener('click', generateAIExample);
+    
+    searchInput.addEventListener('input', handleSearch);
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && wordPage.classList.contains('active')) {
+            showHomepage();
+        }
+        if (e.key === '/' && document.activeElement !== searchInput) {
+            e.preventDefault();
+            searchInput.focus();
+        }
+    });
+}
 
-  function renderList(words) {
-    const frag = document.createDocumentFragment();
-    const toShow = words.slice(0, MAX_RENDER);
+// Theme Management
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
 
-    toShow.forEach((word) => {
-      const li = document.createElement('li');
-      const a = document.createElement('a');
-      a.href = 'word.html?word=' + encodeURIComponent(word);
-      a.textContent = word;
-      li.appendChild(a);
-      frag.appendChild(li);
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    const icon = themeToggle.querySelector('.theme-icon');
+    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+// Render word list
+function renderWordList(words) {
+    if (words.length === 0) {
+        wordList.style.display = 'none';
+        noResults.style.display = 'block';
+        return;
+    }
+
+    noResults.style.display = 'none';
+    wordList.style.display = 'block';
+
+    const fragment = document.createDocumentFragment();
+    
+    words.forEach(word => {
+        const div = document.createElement('div');
+        div.className = 'word-item';
+        
+        const link = document.createElement('a');
+        link.href = '#';
+        link.textContent = word.w;
+        link.onclick = (e) => showWordPage(e, word);
+        
+        div.appendChild(link);
+        fragment.appendChild(div);
     });
 
-    wordListEl.innerHTML = '';
-    wordListEl.appendChild(frag);
-
-    if (words.length === 0) {
-      emptyState.hidden = false;
-      resultCount.textContent = '';
-    } else {
-      emptyState.hidden = true;
-      if (words.length > MAX_RENDER) {
-        resultCount.textContent = `Showing ${MAX_RENDER.toLocaleString()} of ${words.length.toLocaleString()} matches — keep typing to narrow it down`;
-      } else {
-        resultCount.textContent = `${words.length.toLocaleString()} word${words.length === 1 ? '' : 's'}`;
-      }
-    }
-  }
-
-  function filterWords(query) {
-    const q = query.trim().toLowerCase();
-    if (!q) return ALL_WORDS;
-    return ALL_WORDS.filter((w) => w.startsWith(q)).concat(
-      ALL_WORDS.filter((w) => !w.startsWith(q) && w.includes(q))
-    );
-  }
-
-  let debounceTimer = null;
-  searchInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      const q = searchInput.value;
-      const filtered = filterWords(q);
-      emptyQuery.textContent = searchInput.value;
-      renderList(filtered);
-    }, 60);
-  });
-
-  // Initial render
-  renderList(ALL_WORDS);
-
-  // Restore focus/query from URL (?q=) for convenience when navigating back
-  const params = new URLSearchParams(location.search);
-  if (params.get('q')) {
-    searchInput.value = params.get('q');
-    renderList(filterWords(searchInput.value));
-  }
-})();
-
-/* =========================================================
-   Shared helper: generate common spelling variants
-   (American / British / Australian) using rule-based patterns.
-   Not exhaustive, but covers the most common divergences.
-   ========================================================= */
-function getSpellingVariants(word) {
-  const w = word.toLowerCase();
-  const variants = {};
-
-  const rules = [
-    // British/Australian -our  vs American -or
-    { us: /or$/, ukSuffix: 'our', test: (s) => /(colou?r|flavou?r|honou?r|favou?r|behaviou?r|labou?r|neighbou?r|rumou?r|armou?r|vigou?r|humou?r|vapou?r|valou?r|endeavou?r)$/.test(s) },
-  ];
-
-  // -ize (US) vs -ise (UK/AUS)
-  if (/ize$/.test(w) && w.length > 4) {
-    variants.american = w;
-    variants.british = w.replace(/ize$/, 'ise');
-    variants.australian = variants.british;
-  } else if (/ise$/.test(w) && w.length > 4 && /(realise|organise|recognise|apologise|analyse|criticise|emphasise|specialise|customise|memorise|summarise)$/.test(w) === false && /(ise)$/.test(w)) {
-    // could already be UK form
-  }
-
-  // -or (US) vs -our (UK/AUS) for common set
-  const ourWords = ['color','flavor','honor','favor','behavior','labor','neighbor','rumor','armor','vigor','humor','vapor','valor','endeavor','harbor','odor','parlor','rigor','savior','splendor','tumor'];
-  if (ourWords.includes(w)) {
-    variants.american = w;
-    variants.british = w.replace(/or$/, 'our');
-    variants.australian = variants.british;
-  }
-
-  // -er (US) vs -re (UK/AUS) for common set
-  const reWords = ['center','theater','meter','liter','fiber','caliber','somber','luster','specter','saber'];
-  if (reWords.includes(w)) {
-    variants.american = w;
-    variants.british = w.replace(/er$/, 're');
-    variants.australian = variants.british;
-  }
-
-  // -ize/-yze verbs commonly spelled -ise/-yse in UK
-  const izeWords = ['realize','organize','recognize','apologize','analyze','criticize','emphasize','specialize','customize','memorize','summarize','minimize','maximize','capitalize','characterize','civilize','digitize','fantasize','finalize','generalize','harmonize','idolize','improvise','modernize','mobilize','optimize','paralyze','prioritize','sympathize','utilize','visualize'];
-  if (izeWords.includes(w)) {
-    variants.american = w;
-    variants.british = w.replace(/ize$/, 'ise').replace(/yze$/, 'yse');
-    variants.australian = variants.british;
-  }
-
-  // -og (US) vs -ogue (UK/AUS)
-  const ogWords = ['catalog','dialog','analog'];
-  if (ogWords.includes(w)) {
-    variants.american = w;
-    variants.british = w + 'ue';
-    variants.australian = variants.british;
-  }
-
-  // double consonant before -ing/-ed/-er in UK/AUS (e.g. traveling/travelling)
-  const doubleLWords = ['travel','cancel','label','model','signal','fuel','quarrel','marvel','level','tunnel','jewel','counsel','channel'];
-  if (doubleLWords.includes(w)) {
-    variants.american = w;
-    variants.british = w + 'l';
-    variants.australian = variants.british;
-    variants._note = 'l-doubling in inflected forms (e.g. travel\u2192travelled)';
-  }
-
-  // defense/defence, license/licence, offense/offence, pretense/pretence
-  const ceSeWords = { defense: 'defence', license: 'licence', offense: 'offence', pretense: 'pretence' };
-  if (ceSeWords[w]) {
-    variants.american = w;
-    variants.british = ceSeWords[w];
-    variants.australian = ceSeWords[w];
-  }
-
-  // gray/grey
-  if (w === 'gray') {
-    variants.american = 'gray';
-    variants.british = 'grey';
-    variants.australian = 'grey';
-  }
-
-  // aluminum/aluminium
-  if (w === 'aluminum') {
-    variants.american = 'aluminum';
-    variants.british = 'aluminium';
-    variants.australian = 'aluminium';
-  }
-
-  return Object.keys(variants).length ? variants : null;
+    wordList.innerHTML = '';
+    wordList.appendChild(fragment);
 }
+
+// Show word page
+function showWordPage(event, wordData) {
+    if (event) event.preventDefault();
+    
+    currentWordData = wordData;
+    wordTitle.textContent = wordData.w;
+    partOfSpeech.textContent = wordData.p;
+    wordDefinition.textContent = wordData.d;
+    
+    // Show pronunciation if it exists
+    if (wordData.pron) {
+        pronunciationSection.style.display = 'block';
+        wordPronunciation.textContent = wordData.pron;
+    } else {
+        pronunciationSection.style.display = 'none';
+    }
+    
+    // Show verb forms if they exist
+    if (wordData.forms && wordData.p === 'verb') {
+        verbFormsSection.style.display = 'block';
+        verbFormsList.innerHTML = '';
+        
+        const formLabels = [
+            { key: 'past', label: 'Past Simple' },
+            { key: 'pp', label: 'Past Participle' },
+            { key: 'ger', label: 'Gerund' },
+            { key: 'third', label: 'Third Person' }
+        ];
+        
+        formLabels.forEach(({ key, label }) => {
+            if (wordData.forms[key]) {
+                const formItem = document.createElement('div');
+                formItem.className = 'verb-form-item';
+                formItem.innerHTML = `
+                    <span class="verb-form-label">${label}:</span>
+                    <span class="verb-form-value">${wordData.forms[key]}</span>
+                `;
+                verbFormsList.appendChild(formItem);
+            }
+        });
+    } else {
+        verbFormsSection.style.display = 'none';
+    }
+    
+    // Show example if it exists
+    if (wordData.example) {
+        exampleSection.style.display = 'block';
+        wordExample.textContent = wordData.example;
+    } else {
+        exampleSection.style.display = 'none';
+    }
+    
+    // Show variants if they exist
+    if (wordData.v && Object.values(wordData.v).some(v => v)) {
+        variantsSection.style.display = 'block';
+        variantsList.innerHTML = '';
+        
+        const variantInfo = [
+            { key: 'us', label: 'American English', flag: '🇺🇸' },
+            { key: 'uk', label: 'British English', flag: '🇬🇧' },
+            { key: 'au', label: 'Australian English', flag: '🇦🇺' }
+        ];
+        
+        variantInfo.forEach(({ key, label, flag }) => {
+            if (wordData.v[key]) {
+                const badge = document.createElement('div');
+                badge.className = 'variant-badge';
+                badge.innerHTML = `
+                    <span class="flag">${flag}</span>
+                    <span class="region">${label}:</span>
+                    <span class="word">${wordData.v[key]}</span>
+                `;
+                variantsList.appendChild(badge);
+            }
+        });
+    } else {
+        variantsSection.style.display = 'none';
+    }
+    
+    // Generate AI example
+    generateAIExample();
+    
+    homepage.classList.remove('active');
+    wordPage.classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+// AI Example Generation
+async function generateAIExample() {
+    if (!currentWordData) return;
+    
+    aiExampleSection.style.display = 'block';
+    aiExampleText.textContent = '';
+    aiExampleLoading.style.display = 'flex';
+    regenerateBtn.style.display = 'none';
+    
+    try {
+        const response = await fetch('/.netlify/functions/generate-example', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                word: currentWordData.w,
+                partOfSpeech: currentWordData.p,
+                definition: currentWordData.d
+            })
+        });
+        
+        const data = await response.json();
+        console.log('AI Response status:', response.status);
+        console.log('AI Response data:', data);
+        
+        if (response.ok && data.example) {
+            aiExampleText.textContent = data.example;
+        } else {
+            console.warn('AI failed, using dictionary fallback. Error:', data.error);
+            aiExampleText.textContent = currentWordData.example || 'Example not available for this word.';
+        }
+    } catch (error) {
+        console.error('Error generating AI example:', error);
+        aiExampleText.textContent = currentWordData.example || 'Unable to generate example.';
+    }
+    
+    aiExampleLoading.style.display = 'none';
+    regenerateBtn.style.display = 'inline-block';
+}
+
+// Show homepage
+function showHomepage(event) {
+    if (event) event.preventDefault();
+    
+    wordPage.classList.remove('active');
+    homepage.classList.add('active');
+    searchInput.focus();
+}
+
+// Search functionality
+let searchTimeout;
+function handleSearch(e) {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const query = e.target.value.trim().toLowerCase();
+        
+        if (query === '') {
+            filteredWords = [...dictionaryData];
+        } else {
+            filteredWords = dictionaryData.filter(word => {
+                const wordLower = word.w.toLowerCase();
+                const defLower = word.d.toLowerCase();
+                
+                // Search in word and definition
+                if (wordLower.includes(query) || defLower.includes(query)) {
+                    return true;
+                }
+                
+                // Search in variants
+                if (word.v) {
+                    return Object.values(word.v).some(v => 
+                        v && v.toLowerCase().includes(query)
+                    );
+                }
+                
+                return false;
+            });
+            
+            // Sort: exact matches first, then prefix matches, then contains
+            filteredWords.sort((a, b) => {
+                const aLower = a.w.toLowerCase();
+                const bLower = b.w.toLowerCase();
+                
+                if (aLower === query && bLower !== query) return -1;
+                if (bLower === query && aLower !== query) return 1;
+                if (aLower.startsWith(query) && !bLower.startsWith(query)) return -1;
+                if (bLower.startsWith(query) && !aLower.startsWith(query)) return 1;
+                return aLower.localeCompare(bLower);
+            });
+        }
+        
+        renderWordList(filteredWords);
+        updateSearchInfo();
+    }, 150);
+}
+
+// Update search info
+function updateSearchInfo() {
+    const total = dictionaryData.length;
+    const shown = filteredWords.length;
+    
+    if (searchInput.value.trim()) {
+        searchInfo.textContent = `Showing ${shown} of ${total} words`;
+    } else {
+        searchInfo.textContent = `${total} words in dictionary`;
+    }
+}
+
+// Expose showHomepage to window for onclick handlers
+window.showHomepage = showHomepage;

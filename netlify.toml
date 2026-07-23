@@ -1,0 +1,30 @@
+plugins = []
+functionsDirectory = "C:\\Users\\dalav\\Documents\\Simple Dictionary Project\\netlify\\functions"
+functionsDirectoryOrigin = "config-v1"
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "C:\\Users\\dalav\\Documents\\Simple Dictionary Project"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "# no build command"
+functions = "C:\\Users\\dalav\\Documents\\Simple Dictionary Project\\netlify\\functions"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]

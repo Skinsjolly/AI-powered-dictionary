@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Word Finding</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Homepage -->
+    <div id="homepage" class="page active">
+        <header>
+            <div class="header-top">
+                <h1>Simple Word Finding</h1>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle dark/light mode">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+            <p class="subtitle">A complete English dictionary with American, British, and Australian variants</p>
+        </header>
+
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search for a word..." 
+                autocomplete="off"
+                aria-label="Search for a word"
+            >
+            <div id="searchInfo" class="search-info"></div>
+        </div>
+
+        <div id="wordList" class="word-list">
+            <!-- Words will be populated here by JavaScript -->
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading dictionary...</p>
+        </div>
+
+        <div id="noResults" class="no-results" style="display: none;">
+            <p>No words found matching your search.</p>
+        </div>
+    </div>
+
+    <!-- Word Page -->
+    <div id="wordPage" class="page">
+        <div class="word-detail">
+            <a href="#" id="backLink" class="back-link" onclick="showHomepage(event)">← Back to Simple Word Finding</a>
+            
+            <h2 id="wordTitle" class="word-title"></h2>
+            
+            <div id="partOfSpeech" class="part-of-speech"></div>
+            
+            <div class="definition-container">
+                <h3>Definition</h3>
+                <p id="wordDefinition" class="definition"></p>
+            </div>
+
+            <div id="pronunciationSection" class="pronunciation-section" style="display: none;">
+                <h3>Pronunciation</h3>
+                <p id="wordPronunciation" class="pronunciation"></p>
+            </div>
+
+            <div id="verbFormsSection" class="verb-forms-section" style="display: none;">
+                <h3>Verb Forms</h3>
+                <div id="verbFormsList" class="verb-forms-list"></div>
+            </div>
+
+            <div id="exampleSection" class="example-section" style="display: none;">
+                <h3>Example Sentence</h3>
+                <p id="wordExample" class="example"></p>
+            </div>
+
+            <div id="aiExampleSection" class="ai-example-section" style="display: none;">
+                <h3>AI Generated Example</h3>
+                <div id="aiExampleLoading" class="ai-loading" style="display: none;">
+                    <div class="spinner small"></div>
+                    <span>Generating example...</span>
+                </div>
+                <p id="aiExampleText" class="ai-example"></p>
+                <button id="regenerateBtn" class="regenerate-btn" style="display: none;">
+                    🔄 Generate New Example
+                </button>
+            </div>
+
+            <div id="variantsSection" class="variants-section" style="display: none;">
+                <h3>Regional Variants</h3>
+                <div id="variantsList" class="variants-list"></div>
+            </div>
+
+            <div class="back-button-container">
+                <button onclick="showHomepage()" class="back-button">← Back to Simple Word Finding</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Simple Word Finding Dictionary &copy; 2024</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
